@@ -1,6 +1,7 @@
 from .deserialization import *
 
 import bmesh
+import numpy
 
 class Header:
 	def __init__(self, bone_count, mesh_count, mat_count, dummy_count, gxlist_count):
