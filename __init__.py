@@ -9,37 +9,52 @@ bl_info = {
 	"support": "COMMUNITY",
 }
 
-if 'bpy' not in locals():
-	import bpy
-	from . import ui
-	from . import tools
-	from . import flver
-else:
-	#this being needed is criminal
-	import imp
-	imp.reload(ui)
-	imp.reload(tools)
-	imp.reload(flver)
+import bpy
+from bpy.utils import register_class
+from bpy.utils import unregister_class
+
+from . import DataTypes
+from . import deserialization
+from . import exporter
+from . import importer
+from . import model_generation
+from . import ui
+from . import verify
 
 import imp
+imp.reload(DataTypes)
+imp.reload(deserialization)
+imp.reload(exporter)
+imp.reload(importer)
+imp.reload(model_generation)
 imp.reload(ui)
-imp.reload(tools)
-imp.reload(tools.importer)
-imp.reload(flver)
-imp.reload(flver.flver)
-imp.reload(flver.material)
-imp.reload(flver.mesh)
-imp.reload(flver.skeleton)
-imp.reload(flver.util)
-imp.reload(flver.from_dummy)
-imp.reload(flver.mtd)
+imp.reload(verify)
+
+
+classes = (
+	ui.SoulsPlugPreferences,
+	ui.SoulsPlugLoadPrefs,
+	ui.SoulsPlugPanelSettings,
+#	ui.ServerPanel,
+	ui.Asset_Import_Panel,
+	ui.Asset_Tools_Panel,
+	ui.Asset_Export_Panel,
+	ui.Scrub_Mesh_Weights,
+	ui.Select_Overweighted_Verts,
+	ui.ImportAsset,
+#	ui.StartSpServer,
+#	ui.StopSpServer,
+	ui.Gauntlet,
+)
 
 def register():
-	print("registered")
-	ui.register()
-	#flver.register()
+	for c in classes:
+		register_class(c)
+
+	bpy.types.Scene.souls_plug_props = bpy.props.PointerProperty(type=ui.SoulsPlugPanelSettings)
 
 def unregister():
-	print("unregistered")
-	ui.unregister()
-	#flver.unregister()
+	for c in classes:
+		unregister_class(c)
+
+	del bpy.types.Scene.souls_plug_props
