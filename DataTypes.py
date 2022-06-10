@@ -1,7 +1,6 @@
 from .deserialization import *
 
 import bmesh
-import numpy
 
 class Header:
 	def __init__(self, bone_count, mesh_count, mat_count, dummy_count, gxlist_count):
@@ -79,11 +78,17 @@ class Vertex:
 	@staticmethod
 	def Deserialize(p):
 		self = Vertex()
+		#ReadFloat3(p)
 		self.position = ReadFloat3(p)
+		#ReadInt4(p)
 		self.bone_indices = ReadInt4(p)
+		#ReadFloat4(p)
 		self.bone_weights = ReadFloat4(p)
+		#ReadArray(p, ReadFloat3)
 		self.uvs = ReadArray(p, ReadFloat3)
+		#ReadFloat3(p)
 		self.normal = ReadFloat3(p)
+		#ReadFloat(p)
 		self.normalw = ReadFloat(p)
 
 		self.colors = ReadArray(p, ReadFloat4)
@@ -99,9 +104,6 @@ class Faceset:
 		self.indices = ReadArray(p, ReadInt)
 		self.lod = 0
 		return self
-
-	def get_tri_list(self):
-		return (numpy.array(self.indices)).reshape(-1,3).tolist()
 
 class Mesh:
 	@staticmethod
