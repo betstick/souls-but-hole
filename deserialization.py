@@ -6,37 +6,25 @@ def ReadInt(S):
 	return struct.unpack("i", S.read(4))[0]
 
 def ReadInt2(S):
-	x = ReadInt(S)
-	y = ReadInt(S)
-	return (x,y)
+	return struct.unpack("ii", S.read(8))
+
+def ReadInt3(S):
+	return struct.unpack("iii", S.read(12))
 
 def ReadInt4(S):
-	x = ReadInt(S)
-	y = ReadInt(S)
-	z = ReadInt(S)
-	w = ReadInt(S)
-	return (x,y,z,w)
+	return struct.unpack("iiii", S.read(16))
 
 def ReadFloat(S):
 	return struct.unpack("f", S.read(4))[0]
 
 def ReadFloat2(S):
-	x = ReadFloat(S)
-	y = ReadFloat(S)
-	return mathutils.Vector((x, y))
+	return mathutils.Vector(struct.unpack("ff", S.read(8)))
 
 def ReadFloat3(S):
-	x = ReadFloat(S)
-	y = ReadFloat(S)
-	z = ReadFloat(S)
-	return mathutils.Vector((x, y, z))
+	return mathutils.Vector(struct.unpack("fff", S.read(12)))
 
 def ReadFloat4(S):
-	x = ReadFloat(S)
-	y = ReadFloat(S)
-	z = ReadFloat(S)
-	w = ReadFloat(S)
-	return mathutils.Vector((x,y,z,w))
+	return mathutils.Vector(struct.unpack("ffff", S.read(16)))
 
 def ReadBool(S):
 	return struct.unpack("?", S.read(1))[0]

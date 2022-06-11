@@ -101,7 +101,7 @@ class Faceset:
 	def Deserialize(p):
 		self = Faceset()
 		self.flags = ReadInt(p)
-		self.indices = ReadArray(p, ReadInt)
+		self.indices = ReadArray(p, ReadInt3)
 		self.lod = 0
 		return self
 

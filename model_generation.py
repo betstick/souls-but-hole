@@ -470,12 +470,9 @@ def GenerateMesh(Flver, FlverMesh, FlverName, Armature, Materials, load_norms):
 
 	VertPositions = [v.position for v in FlverMesh.vertices]
 
-	# what the hell does this do
-	FaceTris = (numpy.array(FlverMesh.facesets.indices)).reshape(-1,3).tolist()
-
 	# add to blender
 	MeshData = bpy.data.meshes.new("mesh")
-	MeshData.from_pydata(VertPositions,[],FaceTris)
+	MeshData.from_pydata(VertPositions,[], FlverMesh.facesets.indices)
 	MeshData.update
 
 	BlenderMesh = bpy.data.objects.new(FullName,MeshData)
