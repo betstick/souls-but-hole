@@ -31,7 +31,7 @@
 #			tag = "m"
 #		elif asset_type == "Part":
 #			tag = "p"
-#		
+#
 #		armature = bpy.data.objects[tag + str(asset_id) + "_armature"]
 #
 #		meshes = []

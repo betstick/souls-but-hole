@@ -208,7 +208,7 @@ class StartSpServer(bpy.types.Operator):
 			'"' + context.preferences.addons['souls-but-hole'].preferences.ptde_data_path + '"',
 			'"' + context.preferences.addons['souls-but-hole'].preferences.yabber_path + '"',
 		])
-		
+
 		return {'FINISHED'}
 
 class StopSpServer(bpy.types.Operator):
@@ -251,7 +251,7 @@ class Scrub_Mesh_Weights(bpy.types.Operator):
 		print("Scrubbing meshes took: " + str(round(time.time() - op_time,2)) + "s")
 		return {'FINISHED'}
 
-#TODO: confirm that this actually works, or does anything.... 	
+#TODO: confirm that this actually works, or does anything.... 
 class Select_Overweighted_Verts(bpy.types.Operator):
 	"""Tooltip"""
 	bl_idname = "object.select_overweighted_verts" # <- put this string in layout.operator()
@@ -341,7 +341,7 @@ class Gauntlet(bpy.types.Operator):
 				False,
 				False
 			)
-		
+
 		print("Guantlet took: " + str(round(time.time() - op_time,2)) + "s")
 		return {'FINISHED'}
 

@@ -13,9 +13,9 @@ from .DataTypes import *
 def GenerateArmature(flver, armature_name, collection, connect_bones):
 	axes = (0, 1, 2)
 	armature = bpy.data.objects.new(armature_name,bpy.data.armatures.new(armature_name))
-		
+
 	collection.objects.link(armature)
-	
+
 	armature.show_in_front = True
 	armature.data.display_type = "WIRE"
 
@@ -33,39 +33,39 @@ def GenerateArmature(flver, armature_name, collection, connect_bones):
 		while bone_index != -1:
 			flver_bone = flver.bones[bone_index]
 			bone = armature.data.edit_bones[bone_index]
-			
+
 			if flver_bone.parent_index >= 0:
 				bone.parent = armature.data.edit_bones[flver_bone.parent_index]
-				
+
 			translation_vector = mathutils.Vector((
 				flver_bone.translation[0],
 				flver_bone.translation[1],
 				flver_bone.translation[2],
 			))
-			
+
 			rotation_matrix = ((
 				mathutils.Matrix.Rotation(flver_bone.rotation[1], 4, 'Y') @
 				mathutils.Matrix.Rotation(flver_bone.rotation[2], 4, 'Z') @
 				mathutils.Matrix.Rotation(flver_bone.rotation[0], 4, 'X')
 			))
-			
+
 			head = parent_matrix @ translation_vector
 			tail = head + rotation_matrix @ mathutils.Vector((0,0.05,0))
-			
+
 			bone.head = (head[axes[0]], head[axes[1]], head[axes[2]])
 			bone.tail = (tail[axes[0]], tail[axes[1]], tail[axes[2]])
-			
+
 			transform_bone_and_siblings(
 				flver_bone.child_index, 
 				parent_matrix @
 				mathutils.Matrix.Translation(translation_vector) @
 				rotation_matrix
 			)
-				
+
 			bone_index = flver_bone.next_sibling_index
-			
+
 	transform_bone_and_siblings(0, mathutils.Matrix())
-	
+
 	def connect_bone(bone):
 		children = bone.children
 		if len(children) == 0:
@@ -84,7 +84,7 @@ def GenerateArmature(flver, armature_name, collection, connect_bones):
 		bone.tail = child.head
 		child.use_connect = True
 		connect_bone(child)
-	
+
 	if connect_bones:
 		for bone in root_bones:
 			connect_bone(bone)

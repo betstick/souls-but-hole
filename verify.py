@@ -22,7 +22,7 @@ def scrub_mesh_weights(context):
 			for g in v.groups:
 				if g.weight == 0.0:
 					mesh.vertex_groups[g.group].remove([v.index])
-	
+
 	#removes vertex groups from meshes that have no vertices
 	for mesh in meshes:
 		#keep track of vertex groups that are actually in use
@@ -31,7 +31,7 @@ def scrub_mesh_weights(context):
 		for v in mesh.data.vertices:
 			for g in v.groups:
 				used_vertex_groups.add(mesh.vertex_groups[g.group].name)
-		
+
 		#removes vertex groups by name that aren't in the list
 		for g in mesh.vertex_groups:
 			if g.name not in used_vertex_groups:
