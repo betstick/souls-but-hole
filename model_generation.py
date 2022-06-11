@@ -468,9 +468,7 @@ def GenerateMaterials(Flver):
 def GenerateMesh(Flver, FlverMesh, FlverName, Armature, Materials):
 	FullName = FlverName + "_" + FlverMesh.name + "_f"
 
-	VertPositions = []
-	for V in FlverMesh.vertices:
-		VertPositions.append(V.position)
+	VertPositions = [v.position for v in FlverMesh.vertices]
 
 	# what the hell does this do
 	FaceTris = (numpy.array(FlverMesh.facesets.indices)).reshape(-1,3).tolist()
