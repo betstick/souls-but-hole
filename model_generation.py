@@ -74,16 +74,9 @@ def SetMeshWeights(Flver, FlverMesh, BlenderMesh):
 	for bone in Flver.bones:
 		BlenderMesh.vertex_groups.new(name=bone.name)
 
-	for vi in range(len(FlverMesh.vertices)):
-		CurrVert = FlverMesh.vertices[vi]
-
-		for bi in range(len(CurrVert.bone_indices)): # its always 4
-			# TODO: rename vert bone indices to indicate that it is an index for the MESH bone indices
-			CurrBoneIndex = CurrVert.bone_indices[bi]
-			CurrBoneWeight = CurrVert.bone_weights[bi]
-
-			bone_name = Flver.bones[CurrBoneIndex].name
-			BlenderMesh.vertex_groups[bone_name].add([vi],CurrBoneWeight,'ADD')
+	for bone_index, weight_dict in enumerate(FlverMesh.bone_weights):
+		for weight_vert_pair in weight_dict:
+			BlenderMesh.vertex_groups[Flver.bones[FlverMesh.bone_indices[bone_index]].name].add(weight_vert_pair[1], weight_vert_pair[0], "ADD")
 
 # TODO: split this up
 def ApplyUVColors(FlverMesh,BlenderMesh):

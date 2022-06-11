@@ -19,8 +19,6 @@ class Flver:
 		for i in range(len(self.dummies)):
 			self.dummies[i].index = i
 
-		self.armature = None
-
 		return self
 
 class Dummy:
@@ -67,15 +65,11 @@ class Vertex:
 	def Deserialize(p):
 		self = Vertex()
 		self.position = ReadFloat3(p)
-		self.bone_indices = ReadInt4(p)
-		self.bone_weights = ReadFloat4(p)
 		self.uvs = ReadArray(p, ReadFloat3)
 		self.normal = ReadFloat3(p)
 		self.normalw = ReadFloat(p)
 
 		self.colors = ReadArray(p, ReadFloat4)
-		#self.tangents = []
-		#self.bitangent = None
 		return self
 
 class Faceset:
@@ -95,6 +89,15 @@ class Mesh:
 		self.full_name = ""
 		self.bone_indices = ReadArray(p, ReadInt)
 		self.defaultBoneIndex = ReadInt(p)
+
+		# complicated deserialization of bone weights in a format that blender api will like
+		self.bone_weights = []
+		for bone_index in range(ReadInt(p)):
+			self.bone_weights.append([])
+			for dict_index in range(ReadInt(p)):
+				self.bone_weights[bone_index].append((ReadFloat(p), ReadArray(p, ReadInt)))
+
+
 		self.material_index = ReadInt(p)
 		self.vertices = ReadArray(p, Vertex.Deserialize)
 		self.facesets = Faceset.Deserialize(p)
