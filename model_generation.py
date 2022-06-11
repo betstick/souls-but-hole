@@ -10,59 +10,84 @@ import math
 
 from .DataTypes import *
 
-def GenerateArmature(Flver, armature_name, collection, connect_bones):
+def GenerateArmature(flver, armature_name, collection, connect_bones):
+	axes = (0, 1, 2)
 	armature = bpy.data.objects.new(armature_name,bpy.data.armatures.new(armature_name))
-
+		
 	collection.objects.link(armature)
-
+	
 	armature.show_in_front = True
 	armature.data.display_type = "WIRE"
 
 	bpy.context.view_layer.objects.active = armature
 	bpy.ops.object.mode_set(mode="EDIT", toggle=False)
 
-	def AddBones(bone_index, parent_matrix):
-		if bone_index < 0:
-			return
+	root_bones = []
 
-		flver_bone = Flver.bones[bone_index]
-		blender_bone = armature.data.edit_bones.new(flver_bone.name)
-
-		if flver_bone.parent_index >= 0:
-			blender_bone.parent = Flver.bones[flver_bone.parent_index].blender_bone
-
-		# set bone transform relative to parent
-		T = flver_bone.translation
-		R = ((
-				Matrix.Rotation(flver_bone.rotation[1], 4, 'Y') @
-				Matrix.Rotation(flver_bone.rotation[2], 4, 'Z') @
-				Matrix.Rotation(flver_bone.rotation[0], 4, 'X')
-			))
-		#S = flver_bone.scale
-
-		head = parent_matrix @ T
-		tail = head + R @ Vector((0, 0.05, 0))
-
-		blender_bone.head = (head.x, head.y, head.z)
-		blender_bone.tail = (tail.x, tail.y, tail.z)
-
-		flver_bone.blender_bone = blender_bone
-
-		# recurse
-		new_parent_matrix = parent_matrix @ Matrix.Translation(T) @ R
-
-		CurrChildIndex = flver_bone.child_index
-		while CurrChildIndex >= 0:
-			AddBones(CurrChildIndex, new_parent_matrix)
-			CurrChildIndex = Flver.bones[CurrChildIndex].next_sibling_index
-			if CurrChildIndex == flver_bone.child_index:
-				return
-
-	# Spawn new bone, add to root bones if no valid parent
-	for i in range(len(Flver.bones)):
-		flver_bone = Flver.bones[i]
+	for flver_bone in flver.bones:
+		bone = armature.data.edit_bones.new(flver_bone.name)
 		if flver_bone.parent_index < 0:
-			AddBones(i, Matrix())
+			root_bones.append(bone)
+
+	def transform_bone_and_siblings(bone_index, parent_matrix):
+		while bone_index != -1:
+			flver_bone = flver.bones[bone_index]
+			bone = armature.data.edit_bones[bone_index]
+			
+			if flver_bone.parent_index >= 0:
+				bone.parent = armature.data.edit_bones[flver_bone.parent_index]
+				
+			translation_vector = mathutils.Vector((
+				flver_bone.translation[0],
+				flver_bone.translation[1],
+				flver_bone.translation[2],
+			))
+			
+			rotation_matrix = ((
+				mathutils.Matrix.Rotation(flver_bone.rotation[1], 4, 'Y') @
+				mathutils.Matrix.Rotation(flver_bone.rotation[2], 4, 'Z') @
+				mathutils.Matrix.Rotation(flver_bone.rotation[0], 4, 'X')
+			))
+			
+			head = parent_matrix @ translation_vector
+			tail = head + rotation_matrix @ mathutils.Vector((0,0.05,0))
+			
+			bone.head = (head[axes[0]], head[axes[1]], head[axes[2]])
+			bone.tail = (tail[axes[0]], tail[axes[1]], tail[axes[2]])
+			
+			transform_bone_and_siblings(
+				flver_bone.child_index, 
+				parent_matrix @
+				mathutils.Matrix.Translation(translation_vector) @
+				rotation_matrix
+			)
+				
+			bone_index = flver_bone.next_sibling_index
+			
+	transform_bone_and_siblings(0, mathutils.Matrix())
+	
+	def connect_bone(bone):
+		children = bone.children
+		if len(children) == 0:
+			parent = bone.parent
+			if parent is not None:
+				direction = parent.tail - parent.head
+				direction.normalize()
+				length = (bone.tail - bone.head).magnitude
+				bone.tail = bone.head + direction * length
+			return
+		if len(children) > 1:
+			for child in children:
+				connect_bone(child)
+			return
+		child = children[0]
+		bone.tail = child.head
+		child.use_connect = True
+		connect_bone(child)
+	
+	if connect_bones:
+		for bone in root_bones:
+			connect_bone(bone)
 
 	bpy.ops.object.mode_set(mode="OBJECT",toggle=False)
 	return armature
@@ -136,23 +161,13 @@ def ApplyNormals(FlverMesh,BlenderMesh):
 
 	BMesh.normal_update()
 
-#if len(self.materials) > 0:
-#				mat = self.materials[mesh.material_index].create_material(
-#					self.name,
-#					self.materials[mesh.material_index].mtd_params,
-#					mesh.material_index
-#				)
-#				mesh_obj.data.materials.append(mat)
-#def create_material(self,parent_name,mtd_params,index):
 #MTD lists for applying fixes
-
 metals = ['P_Metal[DSB]_Edge.mtd','C_Metal[DSB].mtd','P_Metal[DSB].mtd']
 seath = ['C_5290_Body[DSB][M].mtd','C_5290_Body[DSB].mtd']
 
 def GenerateSingleMaterial(FlverMat, full_mat_name):
 	#TODO: 2750 doesn't load face textures, presumably from NPC stuff?
 	#TODO: 2811 missing boulder textures!
-	#full_mat_name = parent_name + "_mat" + str(index) + "_" + FlverMat.name
 	mtd_name = FlverMat.mtd.split("\\")[-1]
 
 	#create new material and configure defaults
@@ -231,12 +246,12 @@ def GenerateSingleMaterial(FlverMat, full_mat_name):
 	blend_mode = 0
 
 	for p in FlverMat.mtd_params:
-			if p.name == 'g_SpecularPower':
-				spc_pwr_val = float(p.value)
-			elif p.name == 'g_SpecularMapColorPower':
-				spc_clr_pwr_val = float(p.value)
-			elif p.name == 'g_BlendMode':
-				blend_mode = int(p.value)
+		if p.name == 'g_SpecularPower':
+			spc_pwr_val = float(p.value)
+		elif p.name == 'g_SpecularMapColorPower':
+			spc_clr_pwr_val = float(p.value)
+		elif p.name == 'g_BlendMode':
+			blend_mode = int(p.value)
 
 	if blend_mode == 2:
 		mat.node_tree.links.new(vert_color.outputs['Alpha'],mix2.inputs['Fac'])
@@ -447,24 +462,11 @@ def GenerateSingleMaterial(FlverMat, full_mat_name):
 
 	return mat
 
-#			if len(self.materials) > 0:
-#				mat = self.materials[mesh.material_index].create_material(
-#					self.name,
-#					self.materials[mesh.material_index].mtd_params,
-#					mesh.material_index
-#				)
-#				mesh_obj.data.materials.append(mat)
-
 def GenerateMaterials(Flver):
-	Materials = []
-	for i in range(len(Flver.materials)):
-		#parent_name + "_mat" + str(index) + "_" + FlverMat.name
-		Materials.append(GenerateSingleMaterial(Flver.materials[i], Flver.name  + "_mat_" + str(i)))
+	return [GenerateSingleMaterial(Flver.materials[i], Flver.name  + "_mat_" + str(i)) for i in range(len(Flver.materials))]
 
-	return Materials
-
-def GenerateMesh(Flver, FlverMesh, FlverName, Armature, Materials):
-	FullName = FlverName + "_" + FlverMesh.name + "_f"
+def GenerateMesh(Flver, FlverMesh, FlverName, Armature, Materials, load_norms):
+	FullName = FlverName + "_" + FlverMesh.name + "_f0" #faceset 0
 
 	VertPositions = [v.position for v in FlverMesh.vertices]
 
@@ -482,8 +484,12 @@ def GenerateMesh(Flver, FlverMesh, FlverName, Armature, Materials):
 
 	SetMeshWeights(Flver, FlverMesh, BlenderMesh)
 	ApplyUVColors(FlverMesh, BlenderMesh)
-	ApplyNormals(FlverMesh, BlenderMesh)
 
+	if load_norms:
+		ApplyNormals(FlverMesh, BlenderMesh)
+
+	#remove doubles via modifier, apply later
+	BlenderMesh.modifiers.new(name='Weld',type='WELD')
 
 	# apply material
 	BlenderMesh.data.materials.append(Materials[FlverMesh.material_index])
@@ -535,9 +541,7 @@ def GenerateFlver(Flver, bLoadNormals):
 
 	Materials = GenerateMaterials(Flver)
 
-	Meshes = []
-	for FlverMesh in Flver.meshes:
-		Meshes.append(GenerateMesh(Flver, FlverMesh, Flver.name, Armature, Materials))
+	Meshes = [GenerateMesh(Flver, FlverMesh, Flver.name, Armature, Materials, bLoadNormals) for FlverMesh in Flver.meshes]
 
 	for i in range(len(Flver.dummies)):
 		Dummy = Flver.dummies[i]
@@ -545,6 +549,6 @@ def GenerateFlver(Flver, bLoadNormals):
 
 		GenerateDummy(Dummy, DummyName, Armature, collection)
 
-
+	#rotate and invert axis to correct for from axes differences
 	Armature.rotation_euler[0] = math.radians(90)
 	Armature.scale[0] = -1
