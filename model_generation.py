@@ -127,9 +127,7 @@ def ApplyNormals(FlverMesh,BlenderMesh):
 
 	BMesh.verts.ensure_lookup_table()
 
-	norms = []
-	for v in range(len(BlenderMesh.data.vertices)):
-		norms.append(FlverMesh.vertices[v].normal * -1)
+	norms = [FlverMesh.vertices[v].normal * -1 for v in range(len(BlenderMesh.data.vertices))]
 
 	BlenderMesh.data.use_auto_smooth = True
 	BlenderMesh.data.calc_normals_split()
