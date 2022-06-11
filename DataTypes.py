@@ -2,24 +2,12 @@ from .deserialization import *
 
 import bmesh
 
-class Header:
-	def __init__(self, bone_count, mesh_count, mat_count, dummy_count, gxlist_count):
-		self.bone_count = bone_count
-		self.mesh_count = mesh_count
-		self.mat_count = mat_count
-		self.dummy_count = dummy_count
-		self.gxlist_count = gxlist_count
-
 class Flver:
 	@staticmethod
 	def Deserialize(p):
 		self = Flver()
 
 		self.name = ReadString(p)
-
-		self.headerinfo = Header(ReadInt(p), ReadInt(p), ReadInt(p), ReadInt(p), ReadInt(p))
-
-		#self.skeleton = skeleton.Skeleton(ReadArray(p, skeleton.Bone.Deserialize))
 		self.bones = ReadArray(p, Bone.Deserialize)
 		self.materials = ReadArray(p, Material.Deserialize)
 
@@ -78,22 +66,16 @@ class Vertex:
 	@staticmethod
 	def Deserialize(p):
 		self = Vertex()
-		#ReadFloat3(p)
 		self.position = ReadFloat3(p)
-		#ReadInt4(p)
 		self.bone_indices = ReadInt4(p)
-		#ReadFloat4(p)
 		self.bone_weights = ReadFloat4(p)
-		#ReadArray(p, ReadFloat3)
 		self.uvs = ReadArray(p, ReadFloat3)
-		#ReadFloat3(p)
 		self.normal = ReadFloat3(p)
-		#ReadFloat(p)
 		self.normalw = ReadFloat(p)
 
 		self.colors = ReadArray(p, ReadFloat4)
 		#self.tangents = []
-		#	self.bitangent = None
+		#self.bitangent = None
 		return self
 
 class Faceset:
