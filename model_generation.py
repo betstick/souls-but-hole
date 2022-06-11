@@ -79,7 +79,7 @@ def SetMeshWeights(Flver, FlverMesh, BlenderMesh):
 
 		for bi in range(len(CurrVert.bone_indices)): # its always 4
 			# TODO: rename vert bone indices to indicate that it is an index for the MESH bone indices
-			CurrBoneIndex = FlverMesh.bone_indices[CurrVert.bone_indices[bi]]
+			CurrBoneIndex = CurrVert.bone_indices[bi]
 			CurrBoneWeight = CurrVert.bone_weights[bi]
 
 			bone_name = Flver.bones[CurrBoneIndex].name
