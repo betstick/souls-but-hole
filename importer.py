@@ -49,8 +49,7 @@ def import_asset(context, asset_name, asset_type, load_mats, load_norms, overwri
 	sr = io.BufferedReader(p.stdout)
 	Job = ImportJob.Deserialize(sr)
 
-	# Generate flvers
-	for i in range(len(Job.flvers)):
-		CurrFlver = Job.flvers[i]
-		#cProfile.runctx("GenerateFlver(CurrFlver, load_norms)",globals(),locals())
-		obj_groups.append(GenerateFlver(CurrFlver, load_norms))
+	# load_norms is somehow not in scope?? ugly workaround
+	#Profile.runctx("[GenerateFlver(CurrFlver, " + str(load_norms) + ") for CurrFlver in Job.flvers]",globals(),locals())
+
+	[GenerateFlver(CurrFlver, load_norms) for CurrFlver in Job.flvers]

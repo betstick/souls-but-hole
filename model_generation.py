@@ -10,7 +10,7 @@ import math
 
 from .DataTypes import *
 
-def GenerateArmature(flver, armature_name, collection, connect_bones):
+def GenerateArmature(flver_bones, armature_name, collection, connect_bones):
 	armature = bpy.data.objects.new(armature_name,bpy.data.armatures.new(armature_name))
 
 	collection.objects.link(armature)
@@ -23,47 +23,26 @@ def GenerateArmature(flver, armature_name, collection, connect_bones):
 
 	root_bones = []
 
-	for flver_bone in flver.bones:
+	for flver_bone in flver_bones:
 		bone = armature.data.edit_bones.new(flver_bone.name)
 		if flver_bone.parent_index < 0:
 			root_bones.append(bone)
 
-	def transform_bone_and_siblings(bone_index, parent_matrix):
-		while bone_index != -1:
-			flver_bone = flver.bones[bone_index]
-			bone = armature.data.edit_bones[bone_index]
+	for i in range(len(flver_bones)):
+		flver_bone = flver_bones[i]
 
-			if flver_bone.parent_index >= 0:
-				bone.parent = armature.data.edit_bones[flver_bone.parent_index]
+		if not flver_bone.bInitialized:
+			break
 
-			translation_vector = mathutils.Vector((
-				flver_bone.translation[0],
-				flver_bone.translation[1],
-				flver_bone.translation[2],
-			))
+		blender_bone = armature.data.edit_bones[i]
 
-			rotation_matrix = ((
-				mathutils.Matrix.Rotation(flver_bone.rotation[1], 4, 'Y') @
-				mathutils.Matrix.Rotation(flver_bone.rotation[2], 4, 'Z') @
-				mathutils.Matrix.Rotation(flver_bone.rotation[0], 4, 'X')
-			))
+		# Set Parent
+		if flver_bone.parent_index >= 0:
+			blender_bone.parent = armature.data.edit_bones[flver_bone.parent_index]
 
-			head = parent_matrix @ translation_vector
-			tail = head + rotation_matrix @ mathutils.Vector((0,0.05,0))
-
-			bone.head = head
-			bone.tail = tail
-
-			transform_bone_and_siblings(
-				flver_bone.child_index, 
-				parent_matrix @
-				mathutils.Matrix.Translation(translation_vector) @
-				rotation_matrix
-			)
-
-			bone_index = flver_bone.next_sibling_index
-
-	transform_bone_and_siblings(0, mathutils.Matrix())
+		# Set transform
+		blender_bone.head = flver_bone.head_pos
+		blender_bone.tail = flver_bone.tail_pos
 
 	def connect_bone(bone):
 		children = bone.children
@@ -533,7 +512,7 @@ def GenerateDummy(FlverDummy, Name, Armature, collection):
 def GenerateFlver(Flver, bLoadNormals):
 	collection = bpy.context.collection
 
-	Armature = GenerateArmature(Flver, Flver.name+"_armature", collection, True)
+	Armature = GenerateArmature(Flver.bones, Flver.name+"_armature", collection, True)
 
 	Materials = GenerateMaterials(Flver)
 

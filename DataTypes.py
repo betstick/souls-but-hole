@@ -120,16 +120,9 @@ class Bone:
 		self = Bone()
 
 		self.name = ReadString(p)
-
-		# transform
-		self.translation = ReadFloat3(p)
-		self.rotation = ReadFloat3(p)
-		self.scale = ReadFloat3(p)
-
-		#relation
 		self.parent_index = ReadInt(p)
-		self.child_index = ReadInt(p)
-		self.next_sibling_index = ReadInt(p)
-		self.previous_sibling_index = ReadInt(p)
+		self.head_pos = ReadFloat3(p)
+		self.tail_pos = ReadFloat3(p)
+		self.bInitialized = ReadBool(p)
 
 		return self
