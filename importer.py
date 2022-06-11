@@ -5,6 +5,8 @@ import io
 from .deserialization import *
 from .model_generation import *
 
+import cProfile
+
 #list of "good enough" mtd support. shouldn't need to see in console any more.
 #mtds not in this list will have their params printed out
 known_mtds = [
@@ -39,25 +41,16 @@ class ImportJob:
 Job = None
 
 def import_asset(context, asset_name, asset_type, load_mats, load_norms, overwrite, merge_verts, merge_meshes):
+	# Call tongue server with specified asset id
 	prefs = context.preferences.addons['souls-but-hole'].preferences
 	p = subprocess.Popen([prefs.tongue_path, prefs.ptde_data_path, prefs.yabber_path, AssetTypeToCommand[asset_type] + " " + asset_name], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+
+	# Parse output
 	sr = io.BufferedReader(p.stdout)
-
 	Job = ImportJob.Deserialize(sr)
-	#print("C# IMPORT SUCCESS")
 
-	#groups of objects
-	obj_groups = []
-
+	# Generate flvers
 	for i in range(len(Job.flvers)):
 		CurrFlver = Job.flvers[i]
-		print("CurrFlver = " + str(i))
-		#obj_groups.append(CurrFlver.create_flver(load_norms))
+		#cProfile.runctx("GenerateFlver(CurrFlver, load_norms)",globals(),locals())
 		obj_groups.append(GenerateFlver(CurrFlver, load_norms))
-
-#	for group in obj_groups:
-#		if merge_verts:
-#			for mesh_obj in group:
-#				welder = mesh_obj.modifiers.new(name='Weld',type='WELD')
-#				#TODO: apply the modifier
-

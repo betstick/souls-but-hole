@@ -11,7 +11,6 @@ import math
 from .DataTypes import *
 
 def GenerateArmature(flver, armature_name, collection, connect_bones):
-	axes = (0, 1, 2)
 	armature = bpy.data.objects.new(armature_name,bpy.data.armatures.new(armature_name))
 
 	collection.objects.link(armature)
@@ -52,8 +51,8 @@ def GenerateArmature(flver, armature_name, collection, connect_bones):
 			head = parent_matrix @ translation_vector
 			tail = head + rotation_matrix @ mathutils.Vector((0,0.05,0))
 
-			bone.head = (head[axes[0]], head[axes[1]], head[axes[2]])
-			bone.tail = (tail[axes[0]], tail[axes[1]], tail[axes[2]])
+			bone.head = head
+			bone.tail = tail
 
 			transform_bone_and_siblings(
 				flver_bone.child_index, 
