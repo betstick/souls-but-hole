@@ -33,4 +33,4 @@ def ReadString(S):
 	return S.read(struct.unpack("i", S.read(4))[0]).decode("utf-8")
 
 def ReadArray(S, DeserializeElementFunc):
-	return [DeserializeElementFunc(S) for i in range(ReadInt(S))]
+	return [DeserializeElementFunc(S) for i in range(struct.unpack("i", S.read(4))[0])]
