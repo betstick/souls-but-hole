@@ -10,11 +10,12 @@ import math
 
 from .DataTypes import *
 
-def GenerateArmature(flver_bones, armature_name, collection, connect_bones):
+def GenerateArmature(flver, armature_name, collection, connect_bones):
+	axes = (0, 1, 2)
 	armature = bpy.data.objects.new(armature_name,bpy.data.armatures.new(armature_name))
-
+		
 	collection.objects.link(armature)
-
+	
 	armature.show_in_front = True
 	armature.data.display_type = "WIRE"
 
@@ -23,27 +24,48 @@ def GenerateArmature(flver_bones, armature_name, collection, connect_bones):
 
 	root_bones = []
 
-	for flver_bone in flver_bones:
+	for flver_bone in flver.bones:
 		bone = armature.data.edit_bones.new(flver_bone.name)
 		if flver_bone.parent_index < 0:
 			root_bones.append(bone)
 
-	for i in range(len(flver_bones)):
-		flver_bone = flver_bones[i]
-
-		if not flver_bone.bInitialized:
-			break
-
-		blender_bone = armature.data.edit_bones[i]
-
-		# Set Parent
-		if flver_bone.parent_index >= 0:
-			blender_bone.parent = armature.data.edit_bones[flver_bone.parent_index]
-
-		# Set transform
-		blender_bone.head = flver_bone.head_pos
-		blender_bone.tail = flver_bone.tail_pos
-
+	def transform_bone_and_siblings(bone_index, parent_matrix):
+		while bone_index != -1:
+			flver_bone = flver.bones[bone_index]
+			bone = armature.data.edit_bones[bone_index]
+			
+			if flver_bone.parent_index >= 0:
+				bone.parent = armature.data.edit_bones[flver_bone.parent_index]
+				
+			translation_vector = mathutils.Vector((
+				flver_bone.translation[0],
+				flver_bone.translation[1],
+				flver_bone.translation[2],
+			))
+			
+			rotation_matrix = ((
+				mathutils.Matrix.Rotation(flver_bone.rotation[1], 4, 'Y') @
+				mathutils.Matrix.Rotation(flver_bone.rotation[2], 4, 'Z') @
+				mathutils.Matrix.Rotation(flver_bone.rotation[0], 4, 'X')
+			))
+			
+			head = parent_matrix @ translation_vector
+			tail = head + rotation_matrix @ mathutils.Vector((0,0.05,0))
+			
+			bone.head = (head[axes[0]], head[axes[1]], head[axes[2]])
+			bone.tail = (tail[axes[0]], tail[axes[1]], tail[axes[2]])
+			
+			transform_bone_and_siblings(
+				flver_bone.child_index, 
+				parent_matrix @
+				mathutils.Matrix.Translation(translation_vector) @
+				rotation_matrix
+			)
+				
+			bone_index = flver_bone.next_sibling_index
+			
+	transform_bone_and_siblings(0, mathutils.Matrix())
+	
 	def connect_bone(bone):
 		children = bone.children
 		if len(children) == 0:
@@ -62,7 +84,7 @@ def GenerateArmature(flver_bones, armature_name, collection, connect_bones):
 		bone.tail = child.head
 		child.use_connect = True
 		connect_bone(child)
-
+	
 	if connect_bones:
 		for bone in root_bones:
 			connect_bone(bone)
@@ -70,67 +92,78 @@ def GenerateArmature(flver_bones, armature_name, collection, connect_bones):
 	bpy.ops.object.mode_set(mode="OBJECT",toggle=False)
 	return armature
 
-def SetMeshWeights(Flver, FlverMesh, BlenderMesh):
+def create_weight_layers(Flver, FlverMesh, BlenderMesh):
 	for bone in Flver.bones:
 		BlenderMesh.vertex_groups.new(name=bone.name)
 
-	for bone_index, weight_dict in enumerate(FlverMesh.bone_weights):
-		for weight_vert_pair in weight_dict:
-			BlenderMesh.vertex_groups[Flver.bones[FlverMesh.bone_indices[bone_index]].name].add(weight_vert_pair[1], weight_vert_pair[0], "ADD")
+def SetMeshWeights(Flver, FlverMesh, BlenderMesh):
+	for bi in FlverMesh.bone_indices:
+		bone_name = Flver.bones[bi].name
+		BlenderMesh.vertex_groups.new(name=bone_name)
+		BlenderMesh.vertex_groups[bone_name].add(range(len(FlverMesh.vertices)),0.0,'ADD')
 
-# TODO: split this up
-def ApplyUVColors(FlverMesh,BlenderMesh):
-		vertex_map = None
-		colors_done = False
-		for uv_index in range(len(FlverMesh.vertices[0].uvs)):
-			if uv_index == (len(FlverMesh.vertices[0].uvs) - 1) and uv_index > 0:
-				#last one is for light map use
-				uv_layer = BlenderMesh.data.uv_layers.new(name="lit_uv") 
-			else:
-				#naming them all the same thing allows for easier merging of meshes...
-				uv_layer = BlenderMesh.data.uv_layers.new(name="UV Map")
+	bm = bmesh.new()
+	bm.from_mesh(BlenderMesh.data)
+	bm.verts.ensure_lookup_table()
 
-			BlenderMesh.data.uv_layers.active = uv_layer
+	layer_deform = bm.verts.layers.deform.active
 
-			if colors_done == False:
-				BlenderMesh.data.vertex_colors.new(name="Color")
-				vertex_map = defaultdict(list)
+	for vert in bm.verts:
+		vi = vert.index
+		for b_i in range(4):
+			true_bone_index = FlverMesh.bone_indices[FlverMesh.vertices[vi].bone_indices[b_i]]
+			bone_weight = FlverMesh.vertices[vi].bone_weights[b_i]
+			vert[layer_deform][true_bone_index] = bone_weight
 
-			#TODO: optimize this, its kinda slow
-			for face in BlenderMesh.data.polygons:
-				for vert_idx, loop_idx in zip(face.vertices, face.loop_indices):
-					#making this one assignment seems to be MUCH faster
-					uv_layer.data[loop_idx].uv = [
-						FlverMesh.vertices[vert_idx].uvs[uv_index][0],
-						0 - FlverMesh.vertices[vert_idx].uvs[uv_index][1]
-					]
-					#y has to be inverted for some reason idk why
-					if colors_done == False:
-						vertex_map[vert_idx].append(loop_idx)
+	bm.to_mesh(BlenderMesh.data)
 
-			#a FOREACH might work here...
-			# obj.data.vertex_colors['Color'].data.foreach_set(color, vi.colors[0] in vertexmap)???
-			if colors_done == False:
-				for vi in range(len(FlverMesh.vertices)):
-					for l_i in vertex_map[vi]:
-						BlenderMesh.data.vertex_colors['Color'].data[l_i].color = FlverMesh.vertices[vi].colors[0]
+#modifies blendermesh
+def create_uvs(FlverMesh,BlenderMesh):
+	uv_layers = []
 
-			colors_done = True #the color code only needs to run once
+	for uv_index in range(len(FlverMesh.vertices[0].uvs)):	
+		if uv_index == (len(FlverMesh.vertices[0].uvs) - 1) and uv_index > 0:
+			#last one is for light map use
+			uv_layers.append(BlenderMesh.data.uv_layers.new(name="lit_uv"))
+		else:
+			#naming them all the same thing allows for easier merging of meshes...
+			uv_layers.append(BlenderMesh.data.uv_layers.new(name="UV Map"))
+	
+	return uv_layers
+
+def apply_uvs(FlverMesh,bm,uv_layer,uv_index):
+	uv_map = bm.loops.layers.uv[uv_layer.name]
+
+	for face in bm.faces:
+		for loop in face.loops:
+			index = loop.vert.index
+			loop[uv_map].uv = [
+				FlverMesh.vertices[index].uvs[uv_index][0],
+				0 - FlverMesh.vertices[index].uvs[uv_index][1]
+			]
+	return 0
+
+def create_colors(FlverMesh,BlenderMesh):
+	BlenderMesh.data.vertex_colors.new(name="Color")
+
+def apply_colors(FlverMesh,bm):
+	color_layer = bm.loops.layers.color['Color']
+
+	for v in bm.verts:
+		for loop in v.link_loops:
+			loop[color_layer] = FlverMesh.vertices[v.index].colors[0]
 
 def ApplyNormals(FlverMesh,BlenderMesh):
-	BMesh = bmesh.new()
-	BMesh.from_mesh(BlenderMesh.data)
-
-	BMesh.verts.ensure_lookup_table()
-
-	norms = [FlverMesh.vertices[v].normal * -1 for v in range(len(BlenderMesh.data.vertices))]
-
+	bm = bmesh.new()
+	bm.from_mesh(BlenderMesh.data)
 	BlenderMesh.data.use_auto_smooth = True
 	BlenderMesh.data.calc_normals_split()
-	BlenderMesh.data.normals_split_custom_set_from_vertices(norms)
+	BlenderMesh.data.normals_split_custom_set_from_vertices(
+		[FlverMesh.vertices[v].normal * -1 for v in range(len(BlenderMesh.data.vertices))]
+	)
 	BlenderMesh.data.free_normals_split()
 
-	BMesh.normal_update()
+	bm.normal_update()
 
 #MTD lists for applying fixes
 metals = ['P_Metal[DSB]_Edge.mtd','C_Metal[DSB].mtd','P_Metal[DSB].mtd']
@@ -226,6 +259,12 @@ def GenerateSingleMaterial(FlverMat, full_mat_name):
 
 	if blend_mode == 2:
 		mat.node_tree.links.new(vert_color.outputs['Alpha'],mix2.inputs['Fac'])
+	if blend_mode == 4: #this is for "god rays"?
+		mat.node_tree.nodes.remove(main)
+		main = mat.node_tree.nodes.new(type='ShaderNodeEmission')
+		main.location = Vector((-160.0, 240.0))
+		mat.node_tree.links.new(main.outputs['Emission'],mix.inputs[2])
+		mat.node_tree.links.new(vert_color.outputs['Alpha'],mix2.inputs['Fac'])
 
 	#fixes color/roughness issues for specific materials
 	if mtd_name in metals:
@@ -307,7 +346,11 @@ def GenerateSingleMaterial(FlverMat, full_mat_name):
 		#link texture to mix node and vertex color to factor, and diff to base
 		mat.node_tree.links.new(vert_color.outputs['Alpha'],diff_mix_rgb.inputs['Fac'])
 		mat.node_tree.links.new(diff_tex_1.outputs['Color'],diff_mix_rgb.inputs['Color1'])
-		mat.node_tree.links.new(diff_mix_rgb.outputs['Color'],main.inputs['Base Color'])
+		if blend_mode != 4:
+			mat.node_tree.links.new(diff_mix_rgb.outputs['Color'],main.inputs['Base Color'])
+		else:
+			mat.node_tree.links.new(diff_mix_rgb.outputs['Color'],main.inputs['Color'])
+			mat.node_tree.links.new(diff_mix_rgb.outputs['Color'],main.inputs['Strength'])
 
 		#link texture alphas to inputs, and mix to shader mixer
 		mat.node_tree.links.new(vert_color.outputs['Alpha'],alph_mix_rgb.inputs['Fac'])
@@ -354,7 +397,10 @@ def GenerateSingleMaterial(FlverMat, full_mat_name):
 
 		#link spec mix to gamma adjust then base specular
 		mat.node_tree.links.new(spec_mix_rgb.outputs['Color'],spc_clr_pwr.inputs['Color'])
-		mat.node_tree.links.new(spc_clr_pwr.outputs['Color'],main.inputs['Specular'])
+
+		#glass materials seem to look more correct without specular???
+		if mtd_name != 'M_9Glass[DSB][ML].mtd':
+			mat.node_tree.links.new(spc_clr_pwr.outputs['Color'],main.inputs['Specular'])
 
 		#link spec mix to inverter, gamma adjust, then base roughness
 		mat.node_tree.links.new(spec_mix_rgb.outputs['Color'],invert.inputs['Color'])
@@ -425,6 +471,12 @@ def GenerateSingleMaterial(FlverMat, full_mat_name):
 		mat.node_tree.links.new(lit_pwr.outputs['Color'],lit_mix_rgb.inputs['Color2'])
 		mat.node_tree.links.new(diff_mix_rgb.outputs['Color'],lit_mix_rgb.inputs['Color1'])
 		mat.node_tree.links.new(lit_mix_rgb.outputs['Color'],main.inputs['Emissive Color'])
+	
+	#fixes for some "oddball" things like the skulls in the stray demon pit
+	if diff_tex_1 is not None:
+		diff_tex_1.image.colorspace_settings.name = "sRGB"
+	if diff_tex_2 is not None:	
+		diff_tex_2.image.colorspace_settings.name = "sRGB"
 
 	#assign custom properties to the material relating to the MTD its based on
 	mat["MTD_NAME"] = mtd_name
@@ -439,34 +491,70 @@ def GenerateMaterials(Flver):
 def GenerateMesh(Flver, FlverMesh, FlverName, Armature, Materials, load_norms):
 	FullName = FlverName + "_" + FlverMesh.name + "_f0" #faceset 0
 
-	VertPositions = [v.position for v in FlverMesh.vertices]
+	#VertPositions = [v.position for v in FlverMesh.vertices]
+
+	# what the hell does this do
+	FaceTris = (numpy.array(FlverMesh.facesets.indices)).reshape(-1,3).tolist()
 
 	# add to blender
-	MeshData = bpy.data.meshes.new("mesh")
-	MeshData.from_pydata(VertPositions,[], FlverMesh.facesets.indices)
-	MeshData.update
-
-	BlenderMesh = bpy.data.objects.new(FullName,MeshData)
-	bpy.context.collection.objects.link(BlenderMesh)
-	FlverMesh.bm.from_mesh(BlenderMesh.data)
-
-	SetMeshWeights(Flver, FlverMesh, BlenderMesh)
-	ApplyUVColors(FlverMesh, BlenderMesh)
-
-	if load_norms:
-		ApplyNormals(FlverMesh, BlenderMesh)
-
-	#remove doubles via modifier, apply later
-	BlenderMesh.modifiers.new(name='Weld',type='WELD')
-
-	# apply material
-	BlenderMesh.data.materials.append(Materials[FlverMesh.material_index])
+	BlenderMesh = bpy.data.objects.new(FullName,bpy.data.meshes.new("mesh"))
 
 	#parent to skeleton, and setup modifiers
 	BlenderMesh.parent = Armature
 	BlenderMesh.modifiers.new(name='Armature',type='ARMATURE')
 	BlenderMesh.modifiers['Armature'].object = Armature
 	BlenderMesh.modifiers['Armature'].use_deform_preserve_volume = True
+
+	#gotta create uvs here so mesh is up to data?
+	layers = create_uvs(FlverMesh,BlenderMesh)
+	create_colors(FlverMesh,BlenderMesh)
+	create_weight_layers(Flver, FlverMesh, BlenderMesh)
+
+	#actually build the mesh
+	mesh = bmesh.new()
+	mesh.from_mesh(BlenderMesh.data)
+
+	for v in FlverMesh.vertices:
+		mesh.verts.new(v.position)
+		
+	mesh.verts.ensure_lookup_table()
+
+	for ft in FaceTris:
+		try:
+			mesh.faces.new((
+				mesh.verts[ft[0]],
+				mesh.verts[ft[1]],
+				mesh.verts[ft[2]],
+			))
+		except:
+			#literally do nothing if there's an error, it doesn't matter
+			1 + 1
+
+	#dunno what or why, but this makes it work
+	mesh.faces.ensure_lookup_table()
+	mesh.verts.ensure_lookup_table()
+	mesh.faces.index_update()
+	mesh.verts.index_update()
+
+	#apply uvs HERE after mesh built	
+	for i in range(len(layers)):
+		apply_uvs(FlverMesh,mesh,layers[i],i)
+
+	apply_colors(FlverMesh,mesh)
+
+	mesh.to_mesh(BlenderMesh.data)	
+	bpy.context.collection.objects.link(BlenderMesh)
+
+	SetMeshWeights(Flver,FlverMesh,BlenderMesh)
+
+	ApplyNormals(FlverMesh,BlenderMesh)
+
+	#remove doubles via modifier, apply later
+	BlenderMesh.modifiers.new(name='Weld',type='WELD')
+
+	# apply material
+	BlenderMesh.data.materials.append(Materials[FlverMesh.material_index])
+	
 	return BlenderMesh
 
 def GenerateDummy(FlverDummy, Name, Armature, collection):
@@ -505,7 +593,7 @@ def GenerateDummy(FlverDummy, Name, Armature, collection):
 def GenerateFlver(Flver, bLoadNormals):
 	collection = bpy.context.collection
 
-	Armature = GenerateArmature(Flver.bones, Flver.name+"_armature", collection, True)
+	Armature = GenerateArmature(Flver, Flver.name+"_armature", collection, True)
 
 	Materials = GenerateMaterials(Flver)
 

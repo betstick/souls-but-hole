@@ -8,16 +8,20 @@ class Flver:
 		self = Flver()
 
 		self.name = ReadString(p)
-		self.bones = ReadArray(p, Bone.Deserialize)
-		self.materials = ReadArray(p, Material.Deserialize)
 
-		self.meshes = ReadArray(p, Mesh.Deserialize)
+		self.bones = [Bone.Deserialize(p) for i in range(struct.unpack("i", p.read(4))[0])]
+
+		self.meshes = [Mesh.Deserialize(p) for i in range(struct.unpack("i", p.read(4))[0])]
 		for i in range(len(self.meshes)):
 			self.meshes[i].name = "m" + str(i)
 
 		self.dummies = ReadArray(p, Dummy.Deserialize)
 		for i in range(len(self.dummies)):
 			self.dummies[i].index = i
+
+		self.materials = [Material.Deserialize(p) for i in range(struct.unpack("i", p.read(4))[0])]
+		
+		self.armature = None
 
 		return self
 
@@ -32,7 +36,6 @@ class Dummy:
 		self.attach_bone_index = ReadInt(p)
 		self.parent_bone_index = ReadInt(p)
 		return self
-
 
 #MTD lists for applying fixes
 metals = ['P_Metal[DSB]_Edge.mtd','C_Metal[DSB].mtd','P_Metal[DSB].mtd']
@@ -64,12 +67,21 @@ class Vertex:
 	@staticmethod
 	def Deserialize(p):
 		self = Vertex()
-		self.position = ReadFloat3(p)
-		self.uvs = ReadArray(p, ReadFloat3)
-		self.normal = ReadFloat3(p)
-		self.normalw = ReadFloat(p)
+		
+		self.position = struct.unpack("fff", p.read(12))
+		
+		self.bone_indices = struct.unpack("iiii", p.read(16))
+		self.bone_weights = struct.unpack("ffff", p.read(16))
 
-		self.colors = ReadArray(p, ReadFloat4)
+		self.uvs = [struct.unpack("fff", p.read(12)) for i in range(struct.unpack("i", p.read(4))[0])]
+
+		self.normal = mathutils.Vector((struct.unpack("fff", p.read(12))))
+		self.normalw = struct.unpack("f", p.read(4))[0]
+
+		self.colors = [struct.unpack("ffff", p.read(16)) for i in range(struct.unpack("i", p.read(4))[0])]
+		
+		#self.tangents = []
+		#self.bitangent = None
 		return self
 
 class Faceset:
@@ -77,7 +89,8 @@ class Faceset:
 	def Deserialize(p):
 		self = Faceset()
 		self.flags = ReadInt(p)
-		self.indices = ReadArray(p, ReadInt3)
+		self.indices = [struct.unpack("i", p.read(4)) for i in range(struct.unpack("i", p.read(4))[0])]
+		
 		self.lod = 0
 		return self
 
@@ -89,17 +102,8 @@ class Mesh:
 		self.full_name = ""
 		self.bone_indices = ReadArray(p, ReadInt)
 		self.defaultBoneIndex = ReadInt(p)
-
-		# complicated deserialization of bone weights in a format that blender api will like
-		self.bone_weights = []
-		for bone_index in range(ReadInt(p)):
-			self.bone_weights.append([])
-			for dict_index in range(ReadInt(p)):
-				self.bone_weights[bone_index].append((ReadFloat(p), ReadArray(p, ReadInt)))
-
-
 		self.material_index = ReadInt(p)
-		self.vertices = ReadArray(p, Vertex.Deserialize)
+		self.vertices = [Vertex.Deserialize(p) for i in range(struct.unpack("i", p.read(4))[0])]
 		self.facesets = Faceset.Deserialize(p)
 
 		self.bm = bmesh.new()
@@ -123,9 +127,16 @@ class Bone:
 		self = Bone()
 
 		self.name = ReadString(p)
-		self.parent_index = ReadInt(p)
-		self.head_pos = ReadFloat3(p)
-		self.tail_pos = ReadFloat3(p)
-		self.bInitialized = ReadBool(p)
+
+		# transform
+		self.translation = struct.unpack("fff", p.read(12))
+		self.rotation = struct.unpack("fff", p.read(12))
+		self.scale = struct.unpack("fff", p.read(12))
+
+		#relation
+		self.parent_index = struct.unpack("i", p.read(4))[0]
+		self.child_index = struct.unpack("i", p.read(4))[0]
+		self.next_sibling_index = struct.unpack("i", p.read(4))[0]
+		self.previous_sibling_index = struct.unpack("i", p.read(4))[0]
 
 		return self

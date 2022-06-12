@@ -50,6 +50,6 @@ def import_asset(context, asset_name, asset_type, load_mats, load_norms, overwri
 	Job = ImportJob.Deserialize(sr)
 
 	# load_norms is somehow not in scope?? ugly workaround
-	#cProfile.runctx("[GenerateFlver(CurrFlver, " + str(load_norms) + ") for CurrFlver in Job.flvers]",globals(),locals())
+	cProfile.runctx("[GenerateFlver(CurrFlver, " + str(load_norms) + ") for CurrFlver in Job.flvers]",globals(),locals())
 
-	[GenerateFlver(CurrFlver, load_norms) for CurrFlver in Job.flvers]
+	#[GenerateFlver(CurrFlver, load_norms) for CurrFlver in Job.flvers]

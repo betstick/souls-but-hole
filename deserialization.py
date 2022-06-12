@@ -35,10 +35,4 @@ def ReadString(S):
 	return S.read(Length).decode("utf-8")
 
 def ReadArray(S, DeserializeElementFunc):
-	Arr = []
-	ArrCount = ReadInt(S)
-
-	for i in range(ArrCount):
-		Arr.append(DeserializeElementFunc(S))
-
-	return Arr
+	return [DeserializeElementFunc(S) for i in range(ReadInt(S))]
