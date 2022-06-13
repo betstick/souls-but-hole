@@ -77,7 +77,6 @@ def create_weight_layers(Flver, FlverMesh, BlenderMesh):
 def SetMeshWeights(Flver, FlverMesh, BlenderMesh):
 	for bi in FlverMesh.bone_indices:
 		bone_name = Flver.bones[bi].name
-		BlenderMesh.vertex_groups.new(name=bone_name)
 		BlenderMesh.vertex_groups[bone_name].add(range(len(FlverMesh.vertices)),0.0,'ADD')
 
 	bm = bmesh.new()
@@ -87,11 +86,14 @@ def SetMeshWeights(Flver, FlverMesh, BlenderMesh):
 	layer_deform = bm.verts.layers.deform.active
 
 	for vert in bm.verts:
-		vi = vert.index
+		CurrFlverVert = FlverMesh.vertices[vert.index]
+
 		for b_i in range(4):
-			true_bone_index = FlverMesh.bone_indices[FlverMesh.vertices[vi].bone_indices[b_i]]
-			bone_weight = FlverMesh.vertices[vi].bone_weights[b_i]
-			vert[layer_deform][true_bone_index] = bone_weight
+			true_bone_index = FlverMesh.bone_indices[CurrFlverVert.bone_indices[b_i]]
+			bone_weight = CurrFlverVert.bone_weights[b_i]
+
+			if bone_weight != 0:
+				vert[layer_deform][true_bone_index] = bone_weight
 
 	bm.to_mesh(BlenderMesh.data)
 
@@ -106,7 +108,7 @@ def create_uvs(FlverMesh,BlenderMesh):
 		else:
 			#naming them all the same thing allows for easier merging of meshes...
 			uv_layers.append(BlenderMesh.data.uv_layers.new(name="UV Map"))
-	
+
 	return uv_layers
 
 def apply_uvs(FlverMesh,bm,uv_layer,uv_index):
