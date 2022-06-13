@@ -41,9 +41,12 @@ class ImportJob:
 Job = None
 
 def import_asset(context, asset_name, asset_type, load_mats, load_norms, overwrite, merge_verts, merge_meshes):
+	#gets path to addon folder, and thus the text file thingy
+	cache_path = bpy.utils.user_resource('SCRIPTS',path="addons") + "\\souls-but-hole\\dds_paths.txt"
+
 	# Call tongue server with specified asset id
 	prefs = context.preferences.addons['souls-but-hole'].preferences
-	p = subprocess.Popen([prefs.tongue_path, prefs.ptde_data_path, prefs.yabber_path, AssetTypeToCommand[asset_type] + " " + asset_name], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+	p = subprocess.Popen([prefs.tongue_path, prefs.ptde_data_path, prefs.yabber_path, cache_path, AssetTypeToCommand[asset_type] + " " + asset_name], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
 
 	# Parse output
 	sr = io.BufferedReader(p.stdout)
