@@ -468,8 +468,8 @@ def GenerateSingleMaterial(FlverMat, full_mat_name):
 def GenerateMaterials(Flver):
 	return [GenerateSingleMaterial(Flver.materials[i], Flver.name  + "_mat_" + str(i)) for i in range(len(Flver.materials))]
 
-def GenerateMesh(Flver, FlverMesh, FlverName, Armature, Materials, load_norms):
-	FullName = FlverName + "_" + FlverMesh.name + "_f0" #faceset 0
+def GenerateMesh(Flver, FlverMesh, FlverMeshName, Armature, Materials, load_norms):
+	FullName = Flver.name + "_" + FlverMeshName + "_f0" #faceset 0
 
 	# add to blender
 	BlenderMesh = bpy.data.objects.new(FullName,bpy.data.meshes.new("mesh"))
@@ -572,7 +572,7 @@ def GenerateFlver(Flver, bLoadNormals):
 
 	Materials = GenerateMaterials(Flver)
 
-	Meshes = [GenerateMesh(Flver, FlverMesh, Flver.name, Armature, Materials, bLoadNormals) for FlverMesh in Flver.meshes]
+	Meshes = [GenerateMesh(Flver, FlverMesh, "m" + str(i), Armature, Materials, bLoadNormals) for i, FlverMesh in enumerate(Flver.meshes)]
 
 	for i in range(len(Flver.dummies)):
 		Dummy = Flver.dummies[i]

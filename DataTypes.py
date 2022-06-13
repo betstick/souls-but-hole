@@ -14,12 +14,8 @@ class Flver:
 		self.materials = ReadArray(p, Material.Deserialize)
 
 		self.meshes = ReadArray(p, Mesh.Deserialize)
-		for i in range(len(self.meshes)):
-			self.meshes[i].name = "m" + str(i)
 
 		self.dummies = ReadArray(p, Dummy.Deserialize)
-		for i in range(len(self.dummies)):
-			self.dummies[i].index = i
 
 		return self
 
