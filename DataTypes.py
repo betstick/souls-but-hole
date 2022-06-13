@@ -3,21 +3,17 @@ from .deserialization import *
 import bmesh
 
 class Flver:
+	__slots__ = 'name', 'bones', 'materials', 'meshes', 'dummies'
+
 	@staticmethod
 	def Deserialize(p):
 		self = Flver()
 
 		self.name = ReadString(p)
 
-		self.bones = [Bone.Deserialize(p) for i in range(struct.unpack("i", p.read(4))[0])]
-
-		self.meshes = [Mesh.Deserialize(p) for i in range(struct.unpack("i", p.read(4))[0])]
-		for i in range(len(self.meshes)):
-			self.meshes[i].name = "m" + str(i)
+		self.meshes = ReadArray(p, Mesh.Deserialize)
 
 		self.dummies = ReadArray(p, Dummy.Deserialize)
-		for i in range(len(self.dummies)):
-			self.dummies[i].index = i
 
 		self.materials = [Material.Deserialize(p) for i in range(struct.unpack("i", p.read(4))[0])]
 		
@@ -26,6 +22,8 @@ class Flver:
 		return self
 
 class Dummy:
+	__slots__ = 'refid', 'position', 'upward', 'use_upward', 'attach_bone_index', 'parent_bone_index'
+
 	@staticmethod
 	def Deserialize(p):
 		self = Dummy()
@@ -42,6 +40,8 @@ metals = ['P_Metal[DSB]_Edge.mtd','C_Metal[DSB].mtd','P_Metal[DSB].mtd']
 seath = ['C_5290_Body[DSB][M].mtd','C_5290_Body[DSB].mtd']
 
 class Texture_Entry:
+	__slots__ = 'path', 'scale_x', 'scale_y', 'type'
+
 	@staticmethod
 	def Deserialize(p):
 		self = Texture_Entry()
@@ -52,6 +52,8 @@ class Texture_Entry:
 		return self
 
 class Material:
+	__slots__ = 'name', 'mtd', 'flags', 'gx_index', 'textures', 'mtd_params'
+
 	@staticmethod
 	def Deserialize(p):
 		self = Material()
@@ -64,42 +66,44 @@ class Material:
 		return self
 
 class Vertex:
+	__slots__ = 'position', 'bone_indices', 'bone_weights', 'uvs', 'normal', 'normalw', 'colors'
+
 	@staticmethod
 	def Deserialize(p):
 		self = Vertex()
-		
-		self.position = struct.unpack("fff", p.read(12))
-		
-		self.bone_indices = struct.unpack("iiii", p.read(16))
-		self.bone_weights = struct.unpack("ffff", p.read(16))
 
-		self.uvs = [struct.unpack("fff", p.read(12)) for i in range(struct.unpack("i", p.read(4))[0])]
+		self.position = ReadFloat3(p)
 
-		self.normal = mathutils.Vector((struct.unpack("fff", p.read(12))))
-		self.normalw = struct.unpack("f", p.read(4))[0]
+		self.bone_indices = ReadInt4(p)
+		self.bone_weights = ReadFloat4(p)
 
-		self.colors = [struct.unpack("ffff", p.read(16)) for i in range(struct.unpack("i", p.read(4))[0])]
-		
-		#self.tangents = []
-		#self.bitangent = None
+		self.uvs = ReadArray(p, ReadFloat3)
+
+		self.normal = ReadFloat3(p)
+		self.normalw = ReadFloat(p)
+
+		self.colors = ReadArray(p, ReadFloat4)
+
 		return self
 
 class Faceset:
+	__slots__ = 'flags', 'indices', 'lod'
+
 	@staticmethod
 	def Deserialize(p):
 		self = Faceset()
 		self.flags = ReadInt(p)
-		self.indices = [struct.unpack("i", p.read(4)) for i in range(struct.unpack("i", p.read(4))[0])]
-		
+		self.indices = ReadArray(p, ReadInt3)
+
 		self.lod = 0
 		return self
 
 class Mesh:
+	__slots__ = 'bone_indices', 'defaultBoneIndex', 'bone_weights', 'material_index', 'vertices', 'facesets', 'bm'
+
 	@staticmethod
 	def Deserialize(p):
 		self = Mesh()
-		self.name = ""
-		self.full_name = ""
 		self.bone_indices = ReadArray(p, ReadInt)
 		self.defaultBoneIndex = ReadInt(p)
 		self.material_index = ReadInt(p)
@@ -113,6 +117,8 @@ class Mesh:
 MTDParamTypeFuncs = [ReadBool, ReadInt, ReadInt2, ReadFloat, ReadFloat2, ReadFloat3, ReadFloat4]
 
 class MtdParam:
+	__slots__ = 'name', 'type', 'value'
+
 	@staticmethod
 	def Deserialize(p):
 		self = MtdParam()
@@ -122,6 +128,8 @@ class MtdParam:
 		return self
 
 class Bone:
+	__slots__ = 'name', 'parent_index', 'head_pos', 'tail_pos', 'bInitialized'
+
 	@staticmethod
 	def Deserialize(p):
 		self = Bone()

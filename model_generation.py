@@ -109,9 +109,12 @@ def SetMeshWeights(Flver, FlverMesh, BlenderMesh):
 	layer_deform = bm.verts.layers.deform.active
 
 	for vert in bm.verts:
+		CurrFlverVert = FlverMesh.vertices[vert.index]
+
 		for b_i in range(4):
-			true_bone_index = FlverMesh.bone_indices[FlverMesh.vertices[vert.index].bone_indices[b_i]]
-			bone_weight = FlverMesh.vertices[vert.index].bone_weights[b_i]
+			true_bone_index = FlverMesh.bone_indices[CurrFlverVert.bone_indices[b_i]]
+			bone_weight = CurrFlverVert.bone_weights[b_i]
+
 			if bone_weight != 0:
 				vert[layer_deform][true_bone_index] = bone_weight
 
@@ -128,7 +131,7 @@ def create_uvs(FlverMesh,BlenderMesh):
 		else:
 			#naming them all the same thing allows for easier merging of meshes...
 			uv_layers.append(BlenderMesh.data.uv_layers.new(name="UV Map"))
-	
+
 	return uv_layers
 
 def apply_uvs(FlverMesh,bm,uv_layer,uv_index):
@@ -488,10 +491,8 @@ def GenerateSingleMaterial(FlverMat, full_mat_name):
 def GenerateMaterials(Flver):
 	return [GenerateSingleMaterial(Flver.materials[i], Flver.name  + "_mat_" + str(i)) for i in range(len(Flver.materials))]
 
-def GenerateMesh(Flver, FlverMesh, FlverName, Armature, Materials, load_norms):
-	FullName = FlverName + "_" + FlverMesh.name + "_f0" #faceset 0
-
-	VertPositions = [v.position for v in FlverMesh.vertices]
+def GenerateMesh(Flver, FlverMesh, FlverMeshName, Armature, Materials, load_norms):
+	FullName = Flver.name + "_" + FlverMeshName + "_f0" #faceset 0
 
 	# what the hell does this do
 	FaceTris = (numpy.array(FlverMesh.facesets.indices)).reshape(-1,3).tolist()
@@ -516,10 +517,10 @@ def GenerateMesh(Flver, FlverMesh, FlverName, Armature, Materials, load_norms):
 
 	for v in FlverMesh.vertices:
 		mesh.verts.new(v.position)
-		
+
 	mesh.verts.ensure_lookup_table()
 
-	for ft in FaceTris:
+	for ft in FlverMesh.facesets.indices:
 		try:
 			mesh.faces.new((
 				mesh.verts[ft[0]],
@@ -541,13 +542,12 @@ def GenerateMesh(Flver, FlverMesh, FlverName, Armature, Materials, load_norms):
 		apply_uvs(FlverMesh,mesh,layers[i],i)
 
 	apply_colors(FlverMesh,mesh)
-	
 
 	mesh.to_mesh(BlenderMesh.data)	
 	bpy.context.collection.objects.link(BlenderMesh)
+
 	SetMeshWeights(Flver,FlverMesh,BlenderMesh)
 
-	#norms = create_norm_list(FlverMesh, BlenderMesh)
 	ApplyNormals(FlverMesh,BlenderMesh)
 
 	#remove doubles via modifier, apply later
@@ -598,7 +598,7 @@ def GenerateFlver(Flver, bLoadNormals):
 
 	Materials = GenerateMaterials(Flver)
 
-	Meshes = [GenerateMesh(Flver, FlverMesh, Flver.name, Armature, Materials, bLoadNormals) for FlverMesh in Flver.meshes]
+	Meshes = [GenerateMesh(Flver, FlverMesh, "m" + str(i), Armature, Materials, bLoadNormals) for i, FlverMesh in enumerate(Flver.meshes)]
 
 	for i in range(len(Flver.dummies)):
 		Dummy = Flver.dummies[i]

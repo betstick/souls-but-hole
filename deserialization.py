@@ -30,9 +30,7 @@ def ReadBool(S):
 	return struct.unpack("?", S.read(1))[0]
 
 def ReadString(S):
-	Length = ReadInt(S)
-
-	return S.read(Length).decode("utf-8")
+	return S.read(struct.unpack("i", S.read(4))[0]).decode("utf-8")
 
 def ReadArray(S, DeserializeElementFunc):
-	return [DeserializeElementFunc(S) for i in range(ReadInt(S))]
+	return [DeserializeElementFunc(S) for i in range(struct.unpack("i", S.read(4))[0])]
