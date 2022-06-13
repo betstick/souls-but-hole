@@ -328,7 +328,7 @@ class Gauntlet(bpy.types.Operator):
 	def execute(self, context):
 		op_time = time.time()
 
-		test_ids = ["5370","5220","4500","5290","2920","2790","5340"]
+		test_ids = ["c5370","c5220","c4500","c5290","c2920","c2790","c5340"]
 
 		for id in test_ids:
 			importer.import_asset(

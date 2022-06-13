@@ -33,7 +33,6 @@ class Dummy:
 		self.parent_bone_index = ReadInt(p)
 		return self
 
-
 #MTD lists for applying fixes
 metals = ['P_Metal[DSB]_Edge.mtd','C_Metal[DSB].mtd','P_Metal[DSB].mtd']
 seath = ['C_5290_Body[DSB][M].mtd','C_5290_Body[DSB].mtd']
@@ -64,12 +63,19 @@ class Vertex:
 	@staticmethod
 	def Deserialize(p):
 		self = Vertex()
+
 		self.position = ReadFloat3(p)
+
+		self.bone_indices = ReadInt4(p)
+		self.bone_weights = ReadFloat4(p)
+
 		self.uvs = ReadArray(p, ReadFloat3)
+
 		self.normal = ReadFloat3(p)
 		self.normalw = ReadFloat(p)
 
 		self.colors = ReadArray(p, ReadFloat4)
+
 		return self
 
 class Faceset:
@@ -78,6 +84,7 @@ class Faceset:
 		self = Faceset()
 		self.flags = ReadInt(p)
 		self.indices = ReadArray(p, ReadInt3)
+
 		self.lod = 0
 		return self
 
@@ -89,15 +96,6 @@ class Mesh:
 		self.full_name = ""
 		self.bone_indices = ReadArray(p, ReadInt)
 		self.defaultBoneIndex = ReadInt(p)
-
-		# complicated deserialization of bone weights in a format that blender api will like
-		self.bone_weights = []
-		for bone_index in range(ReadInt(p)):
-			self.bone_weights.append([])
-			for dict_index in range(ReadInt(p)):
-				self.bone_weights[bone_index].append((ReadFloat(p), ReadArray(p, ReadInt)))
-
-
 		self.material_index = ReadInt(p)
 		self.vertices = ReadArray(p, Vertex.Deserialize)
 		self.facesets = Faceset.Deserialize(p)
