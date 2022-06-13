@@ -68,7 +68,7 @@ class Material:
 		return self
 
 class Vertex:
-	__slots__ = 'position', 'uvs', 'normal', 'normalw', 'colors'
+	__slots__ = 'position', 'bone_indices', 'bone_weights', 'uvs', 'normal', 'normalw', 'colors'
 
 	@staticmethod
 	def Deserialize(p):
