@@ -94,12 +94,12 @@ def GenerateArmature(flver, armature_name, collection, connect_bones):
 
 def create_weight_layers(Flver, FlverMesh, BlenderMesh):
 	for bone in Flver.bones:
+		if 
 		BlenderMesh.vertex_groups.new(name=bone.name)
 
 def SetMeshWeights(Flver, FlverMesh, BlenderMesh):
 	for bi in FlverMesh.bone_indices:
 		bone_name = Flver.bones[bi].name
-		BlenderMesh.vertex_groups.new(name=bone_name)
 		BlenderMesh.vertex_groups[bone_name].add(range(len(FlverMesh.vertices)),0.0,'ADD')
 
 	bm = bmesh.new()
@@ -109,11 +109,11 @@ def SetMeshWeights(Flver, FlverMesh, BlenderMesh):
 	layer_deform = bm.verts.layers.deform.active
 
 	for vert in bm.verts:
-		vi = vert.index
 		for b_i in range(4):
-			true_bone_index = FlverMesh.bone_indices[FlverMesh.vertices[vi].bone_indices[b_i]]
-			bone_weight = FlverMesh.vertices[vi].bone_weights[b_i]
-			vert[layer_deform][true_bone_index] = bone_weight
+			true_bone_index = FlverMesh.bone_indices[FlverMesh.vertices[vert.index].bone_indices[b_i]]
+			bone_weight = FlverMesh.vertices[vert.index].bone_weights[b_i]
+			if bone_weight != 0:
+				vert[layer_deform][true_bone_index] = bone_weight
 
 	bm.to_mesh(BlenderMesh.data)
 
@@ -491,7 +491,7 @@ def GenerateMaterials(Flver):
 def GenerateMesh(Flver, FlverMesh, FlverName, Armature, Materials, load_norms):
 	FullName = FlverName + "_" + FlverMesh.name + "_f0" #faceset 0
 
-	#VertPositions = [v.position for v in FlverMesh.vertices]
+	VertPositions = [v.position for v in FlverMesh.vertices]
 
 	# what the hell does this do
 	FaceTris = (numpy.array(FlverMesh.facesets.indices)).reshape(-1,3).tolist()
@@ -541,12 +541,13 @@ def GenerateMesh(Flver, FlverMesh, FlverName, Armature, Materials, load_norms):
 		apply_uvs(FlverMesh,mesh,layers[i],i)
 
 	apply_colors(FlverMesh,mesh)
+	
 
 	mesh.to_mesh(BlenderMesh.data)	
 	bpy.context.collection.objects.link(BlenderMesh)
-
 	SetMeshWeights(Flver,FlverMesh,BlenderMesh)
 
+	#norms = create_norm_list(FlverMesh, BlenderMesh)
 	ApplyNormals(FlverMesh,BlenderMesh)
 
 	#remove doubles via modifier, apply later

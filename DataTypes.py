@@ -130,6 +130,7 @@ class Bone:
 
 		# transform
 		self.translation = struct.unpack("fff", p.read(12))
+		print(self.translation)
 		self.rotation = struct.unpack("fff", p.read(12))
 		self.scale = struct.unpack("fff", p.read(12))
 
