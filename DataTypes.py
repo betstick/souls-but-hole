@@ -20,7 +20,7 @@ class Flver:
 		return self
 
 class Dummy:
-	__slots__ = 'refid', 'position', 'upward', 'use_upward', 'attach_bone_index', 'parent_bone_index', 'index'
+	__slots__ = 'refid', 'position', 'upward', 'use_upward', 'attach_bone_index', 'parent_bone_index'
 
 	@staticmethod
 	def Deserialize(p):
@@ -97,13 +97,11 @@ class Faceset:
 		return self
 
 class Mesh:
-	__slots__ = 'name', 'full_name', 'bone_indices', 'defaultBoneIndex', 'bone_weights', 'material_index', 'vertices', 'facesets', 'bm'
+	__slots__ = 'bone_indices', 'defaultBoneIndex', 'bone_weights', 'material_index', 'vertices', 'facesets', 'bm'
 
 	@staticmethod
 	def Deserialize(p):
 		self = Mesh()
-		self.name = ""
-		self.full_name = ""
 		self.bone_indices = ReadArray(p, ReadInt)
 		self.defaultBoneIndex = ReadInt(p)
 		self.material_index = ReadInt(p)
