@@ -20,6 +20,8 @@ from . import importer
 from . import model_generation
 from . import ui
 from . import verify
+from . import msb1
+from . import mat_ds1
 
 import imp
 imp.reload(DataTypes)
@@ -29,6 +31,8 @@ imp.reload(importer)
 imp.reload(model_generation)
 imp.reload(ui)
 imp.reload(verify)
+imp.reload(msb1)
+imp.reload(mat_ds1)
 
 
 classes = (
