@@ -1,9 +1,12 @@
 from sys import stdout
 import subprocess
 import io
+import math
 
 from .deserialization import *
 from .model_generation import *
+
+from .msb1 import *
 
 import cProfile
 
@@ -41,18 +44,61 @@ class ImportJob:
 Job = None
 
 def import_asset(context, asset_name, asset_type, load_mats, load_norms, overwrite, merge_verts, merge_meshes):
-	#gets path to addon folder, and thus the text file thingy
-	cache_path = bpy.utils.user_resource('SCRIPTS',path="addons") + "\\souls-but-hole\\dds_paths.txt"
-
 	# Call tongue server with specified asset id
 	prefs = context.preferences.addons['souls-but-hole'].preferences
-	p = subprocess.Popen([prefs.tongue_path, prefs.ptde_data_path, prefs.yabber_path, cache_path, AssetTypeToCommand[asset_type] + " " + asset_name], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+
+	game_ver = bpy.context.scene.souls_plug_props.game_version
+	data_path = ""
+	cache_path = ""
+
+	if game_ver == 'PTDE':
+		data_path = prefs.ptde_data_path
+		cache_path = bpy.utils.user_resource('SCRIPTS',path="addons") + "\\souls-but-hole\\dds_paths.txt"
+	elif game_ver == 'DS3':
+		data_path = prefs.ds3_data_path
+		cache_path = bpy.utils.user_resource('SCRIPTS',path="addons") + "\\souls-but-hole\\dds_paths_ds3.txt"
+
+	p = subprocess.Popen([prefs.tongue_path, data_path, prefs.yabber_path, cache_path, AssetTypeToCommand[asset_type] + " " + asset_name], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
 
 	# Parse output
 	sr = io.BufferedReader(p.stdout)
+
+	if asset_type == 'Map':
+		msb = MSB1.Deserialize(sr)
+
+		for mp in msb.parts.map_pieces:
+			print(mp.part.name + " " + str(mp.part.position) + " " + str(mp.part.rotation))
+
 	Job = ImportJob.Deserialize(sr)
 
 	# load_norms is somehow not in scope?? ugly workaround
 	#cProfile.runctx("[GenerateFlver(CurrFlver, " + str(load_norms) + ") for CurrFlver in Job.flvers]",globals(),locals())
 
-	[GenerateFlver(CurrFlver, load_norms) for CurrFlver in Job.flvers]
+	flvers = [GenerateFlver(CurrFlver, load_norms) for CurrFlver in Job.flvers]
+
+	if asset_type == 'Map':
+		for flver in flvers:
+			"""for emo in msb.events.map_offsets:
+				if emo.event.part_name in flver.name:
+					flver.location = emo.position
+					if mp.part.rotation[0] != 0:
+						flver.rotation_axis_angle[0] = math.radians(emo.degree)"""
+			for mp in msb.parts.map_pieces:
+				if mp.part.name[(len(mp.part.name) - 5):] == "_0000":
+					if mp.part.name[:(len(mp.part.name) - 5)] in flver.name:
+						flver.location = mp.part.position
+						if mp.part.rotation[0] != 0:
+							flver.rotation_euler[0] = math.radians(mp.part.rotation[0])
+						if mp.part.rotation[2] != 0:
+							flver.rotation_euler[1] = math.radians(mp.part.rotation[2])
+						if mp.part.rotation[1] != 0:
+							flver.rotation_euler[2] = math.radians(0 - mp.part.rotation[1])
+				elif "_" not in mp.part.name:
+					if mp.part.name in flver.name:
+						flver.location = mp.part.position
+						if mp.part.rotation[0] != 0:
+							flver.rotation_euler[0] = math.radians(mp.part.rotation[0])
+						if mp.part.rotation[2] != 0:
+							flver.rotation_euler[1] = math.radians(mp.part.rotation[2])
+						if mp.part.rotation[1] != 0:
+							flver.rotation_euler[2] = math.radians(0 - mp.part.rotation[1])

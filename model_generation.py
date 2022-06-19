@@ -175,7 +175,7 @@ def GenerateMaterials(Flver):
 	elif game_ver == 'DS3':
 		return [create_ds3_material(Flver.materials[i], Flver.name  + "_mat_" + str(i)) for i in range(len(Flver.materials))]
 
-def GenerateMesh(Flver, FlverMesh, FlverMeshName, Armature, Materials, load_norms):
+def GenerateMesh(Flver, FlverMesh, FlverMeshName, Armature, Materials, load_norms, collection):
 	FullName = Flver.name + "_" + FlverMeshName + "_f0" #faceset 0
 
 	# add to blender
@@ -225,11 +225,12 @@ def GenerateMesh(Flver, FlverMesh, FlverMeshName, Armature, Materials, load_norm
 	apply_colors(FlverMesh,mesh)
 
 	mesh.to_mesh(BlenderMesh.data)	
-	bpy.context.collection.objects.link(BlenderMesh)
+	collection.objects.link(BlenderMesh)
 
 	SetMeshWeights(Flver,FlverMesh,BlenderMesh)
 
-	ApplyNormals(FlverMesh,BlenderMesh)
+	if load_norms:
+		ApplyNormals(FlverMesh,BlenderMesh)
 
 	#remove doubles via modifier, apply later
 	BlenderMesh.modifiers.new(name='Weld',type='WELD')
@@ -273,18 +274,17 @@ def GenerateDummy(FlverDummy, Name, Armature, collection):
 	#might even dupe it, clear apply the ops to the duplicate, pull nums, then delete the dupe?
 
 def GenerateFlver(Flver, bLoadNormals):
-	collection = bpy.context.collection
+	flver_col = bpy.data.collections.new(Flver.name)
+	bpy.context.collection.children.link(flver_col)
 
-	Armature = GenerateArmature(Flver.bones, Flver.name+"_armature", collection, True)
-
-	Materials = GenerateMaterials(Flver)
-
-	Meshes = [GenerateMesh(Flver, FlverMesh, "m" + str(i), Armature, Materials, bLoadNormals) for i, FlverMesh in enumerate(Flver.meshes)]
+	Armature = GenerateArmature(Flver.bones, Flver.name+"_armature", flver_col, True)
+	mats = GenerateMaterials(Flver)
+	Meshes = [GenerateMesh(Flver, FlverMesh, "m" + str(i), Armature, mats, bLoadNormals, flver_col) for i, FlverMesh in enumerate(Flver.meshes)]
 
 	for i in range(len(Flver.dummies)):
 		Dummy = Flver.dummies[i]
 		DummyName = Flver.name + "_d" + str(i) + "_" + str(Dummy.refid)
 
-		GenerateDummy(Dummy, DummyName, Armature, collection)
+		GenerateDummy(Dummy, DummyName, Armature, flver_col)
 
 	return Armature

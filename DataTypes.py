@@ -25,12 +25,12 @@ class Dummy:
 	@staticmethod
 	def Deserialize(p):
 		self = Dummy()
-		self.refid = ReadInt(p)
+		self.refid = ReadSShort(p)
 		self.position = ReadFloat3(p)
 		self.upward = ReadFloat3(p)
 		self.use_upward = ReadBool(p)
-		self.attach_bone_index = ReadInt(p)
-		self.parent_bone_index = ReadInt(p)
+		self.attach_bone_index = ReadSShort(p)
+		self.parent_bone_index = ReadSShort(p)
 		return self
 
 #MTD lists for applying fixes
@@ -85,12 +85,13 @@ class Vertex:
 		return self
 
 class Faceset:
-	__slots__ = 'flags', 'indices', 'lod'
+	__slots__ = 'flags', 'cull_backfaces', 'indices', 'lod'
 
 	@staticmethod
 	def Deserialize(p):
 		self = Faceset()
 		self.flags = ReadInt(p)
+		self.cull_backfaces = ReadBool(p)
 		self.indices = ReadArray(p, ReadInt3)
 
 		self.lod = 0
@@ -103,6 +104,7 @@ class Mesh:
 	def Deserialize(p):
 		self = Mesh()
 		self.bone_indices = ReadArray(p, ReadInt)
+		print("Got " + str(len(self.bone_indices)) + " bone indices...")
 		self.defaultBoneIndex = ReadInt(p)
 		self.material_index = ReadInt(p)
 		self.vertices = ReadArray(p, Vertex.Deserialize)
@@ -133,7 +135,7 @@ class Bone:
 		self = Bone()
 
 		self.name = ReadString(p)
-		self.parent_index = ReadInt(p)
+		self.parent_index = ReadSShort(p)
 		self.head_pos = ReadFloat3(p)
 		self.tail_pos = ReadFloat3(p)
 		self.bInitialized = ReadBool(p)
